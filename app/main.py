@@ -95,41 +95,58 @@ async def _pump_browser_to_gemini(websocket: WebSocket, session) -> None:
 
 async def _pump_gemini_to_browser(websocket: WebSocket, session, call_id: str,
                                   started_at: str) -> None:
-    """Forward agent audio, transcripts and tool calls back to the browser."""
-    async for message in session.receive():
-        server_content = message.server_content
-        if server_content is not None:
-            if server_content.interrupted:
-                await websocket.send_json({"type": "interrupted"})
-            if server_content.input_transcription and \
-                    server_content.input_transcription.text:
+    """Forward agent audio, transcripts and tool calls back to the browser.
+
+    `session.receive()` ends its async iterator at the end of every model turn
+    (it breaks on ``turn_complete``), so we loop over it repeatedly to keep the
+    call alive across turns. It only stops when the agent hangs up (``end_call``)
+    or the Live session is closed by the server.
+    """
+    while True:
+        received_any = False
+        async for message in session.receive():
+            received_any = True
+            server_content = message.server_content
+            if server_content is not None:
+                if server_content.interrupted:
+                    await websocket.send_json({"type": "interrupted"})
+                if server_content.input_transcription and \
+                        server_content.input_transcription.text:
+                    await websocket.send_json({
+                        "type": "transcript",
+                        "role": "driver",
+                        "text": server_content.input_transcription.text,
+                    })
+                if server_content.output_transcription and \
+                        server_content.output_transcription.text:
+                    await websocket.send_json({
+                        "type": "transcript",
+                        "role": "agent",
+                        "text": server_content.output_transcription.text,
+                    })
+
+            if message.data:
                 await websocket.send_json({
-                    "type": "transcript",
-                    "role": "driver",
-                    "text": server_content.input_transcription.text,
-                })
-            if server_content.output_transcription and \
-                    server_content.output_transcription.text:
-                await websocket.send_json({
-                    "type": "transcript",
-                    "role": "agent",
-                    "text": server_content.output_transcription.text,
+                    "type": "audio",
+                    "data": base64.b64encode(message.data).decode("ascii"),
                 })
 
-        if message.data:
-            await websocket.send_json({
-                "type": "audio",
-                "data": base64.b64encode(message.data).decode("ascii"),
-            })
+            if message.tool_call and message.tool_call.function_calls:
+                should_end = await _handle_tool_call(
+                    websocket, session, message.tool_call.function_calls,
+                    call_id, started_at,
+                )
+                if should_end:
+                    await websocket.send_json({"type": "call_ended"})
+                    return
 
-        if message.tool_call and message.tool_call.function_calls:
-            should_end = await _handle_tool_call(
-                websocket, session, message.tool_call.function_calls,
-                call_id, started_at,
-            )
-            if should_end:
-                await websocket.send_json({"type": "call_ended"})
-                return
+        # A turn just finished; loop to await the next one. If the iterator
+        # yielded nothing, the Live session was closed — stop pumping so we do
+        # not busy-loop.
+        if not received_any:
+            logger.info("Live session closed by the server for call %s",
+                        call_id)
+            return
 
 
 async def _handle_tool_call(websocket: WebSocket, session, function_calls,

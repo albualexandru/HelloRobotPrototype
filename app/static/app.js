@@ -96,7 +96,7 @@ function playChunk(base64) {
   source.onended = () => {
     activeSources = activeSources.filter((item) => item !== source);
     if (ended && activeSources.length === 0) {
-      finishCall();
+      finishCall("playback drained after end");
     }
   };
 }
@@ -169,10 +169,11 @@ function stopMicrophone() {
   }
 }
 
-function finishCall() {
+function finishCall(reason) {
   if (finished) {
     return;
   }
+  console.info("[call] finishing call:", reason || "unknown");
   finished = true;
   stopMicrophone();
   closePlayback();
@@ -195,6 +196,9 @@ function finishCall() {
 
 function handleMessage(event) {
   const message = JSON.parse(event.data);
+  if (message.type !== "audio") {
+    console.debug("[call] message:", message.type);
+  }
   switch (message.type) {
     case "ready":
       setStatus("Connected — the agent is speaking", true);
@@ -208,7 +212,7 @@ function handleMessage(event) {
     case "interrupted":
       stopPlayback();
       if (ended) {
-        finishCall();
+        finishCall("interrupted after end");
       }
       break;
     case "result":
@@ -218,13 +222,13 @@ function handleMessage(event) {
       ended = true;
       setStatus("The agent is hanging up…", true);
       if (activeSources.length === 0) {
-        finishCall();
+        finishCall("agent end_call");
       }
       break;
     case "error":
       showError(message.message);
       ended = true;
-      finishCall();
+      finishCall("server error: " + message.message);
       break;
     default:
       break;
@@ -260,10 +264,10 @@ async function answerCall() {
   socket = new WebSocket(`${protocol}://${window.location.host}/ws/call`);
   socket.onmessage = handleMessage;
   socket.onerror = () => showError("Connection to the server failed.");
-  socket.onclose = () => {
+  socket.onclose = (event) => {
     if (!ended) {
       ended = true;
-      finishCall();
+      finishCall(`websocket closed (code ${event.code})`);
     }
   };
 
@@ -276,7 +280,7 @@ function hangUp() {
     socket.send(JSON.stringify({ type: "hangup" }));
   }
   ended = true;
-  finishCall();
+  finishCall("user hangup");
 }
 
 els.answer.addEventListener("click", answerCall);
