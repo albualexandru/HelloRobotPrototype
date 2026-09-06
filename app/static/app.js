@@ -24,6 +24,7 @@ let playbackCursor = 0;
 let activeSources = [];
 let pendingResult = null;
 let ended = false;
+let finished = false;
 let lastRole = null;
 
 function setStatus(text, live) {
@@ -109,6 +110,14 @@ function stopPlayback() {
   playbackCursor = 0;
 }
 
+function closePlayback() {
+  stopPlayback();
+  if (playbackContext) {
+    playbackContext.close();
+    playbackContext = null;
+  }
+}
+
 async function startMicrophone() {
   micStream = await navigator.mediaDevices.getUserMedia({
     audio: {
@@ -151,8 +160,12 @@ function stopMicrophone() {
 }
 
 function finishCall() {
+  if (finished) {
+    return;
+  }
+  finished = true;
   stopMicrophone();
-  stopPlayback();
+  closePlayback();
   if (socket && socket.readyState === WebSocket.OPEN) {
     socket.close();
   }
@@ -214,6 +227,7 @@ async function answerCall() {
   els.transcriptPanel.hidden = true;
   pendingResult = null;
   ended = false;
+  finished = false;
   lastRole = null;
   setStatus("Connecting…", false);
 

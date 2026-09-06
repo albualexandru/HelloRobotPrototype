@@ -95,41 +95,40 @@ async def _pump_browser_to_gemini(websocket: WebSocket, session) -> None:
 async def _pump_gemini_to_browser(websocket: WebSocket, session, call_id: str,
                                   started_at: str) -> None:
     """Forward agent audio, transcripts and tool calls back to the browser."""
-    while True:
-        async for message in session.receive():
-            server_content = message.server_content
-            if server_content is not None:
-                if server_content.interrupted:
-                    await websocket.send_json({"type": "interrupted"})
-                if server_content.input_transcription and \
-                        server_content.input_transcription.text:
-                    await websocket.send_json({
-                        "type": "transcript",
-                        "role": "driver",
-                        "text": server_content.input_transcription.text,
-                    })
-                if server_content.output_transcription and \
-                        server_content.output_transcription.text:
-                    await websocket.send_json({
-                        "type": "transcript",
-                        "role": "agent",
-                        "text": server_content.output_transcription.text,
-                    })
-
-            if message.data:
+    async for message in session.receive():
+        server_content = message.server_content
+        if server_content is not None:
+            if server_content.interrupted:
+                await websocket.send_json({"type": "interrupted"})
+            if server_content.input_transcription and \
+                    server_content.input_transcription.text:
                 await websocket.send_json({
-                    "type": "audio",
-                    "data": base64.b64encode(message.data).decode("ascii"),
+                    "type": "transcript",
+                    "role": "driver",
+                    "text": server_content.input_transcription.text,
+                })
+            if server_content.output_transcription and \
+                    server_content.output_transcription.text:
+                await websocket.send_json({
+                    "type": "transcript",
+                    "role": "agent",
+                    "text": server_content.output_transcription.text,
                 })
 
-            if message.tool_call and message.tool_call.function_calls:
-                should_end = await _handle_tool_call(
-                    websocket, session, message.tool_call.function_calls,
-                    call_id, started_at,
-                )
-                if should_end:
-                    await websocket.send_json({"type": "call_ended"})
-                    return
+        if message.data:
+            await websocket.send_json({
+                "type": "audio",
+                "data": base64.b64encode(message.data).decode("ascii"),
+            })
+
+        if message.tool_call and message.tool_call.function_calls:
+            should_end = await _handle_tool_call(
+                websocket, session, message.tool_call.function_calls,
+                call_id, started_at,
+            )
+            if should_end:
+                await websocket.send_json({"type": "call_ended"})
+                return
 
 
 async def _handle_tool_call(websocket: WebSocket, session, function_calls,
