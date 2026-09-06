@@ -56,7 +56,7 @@ RECORD_PICKUP_RESPONSE_TOOL = {
             },
             "verbatim_answer": {
                 "type": "STRING",
-                "description": "The driver's answer summarised in one sentence.",
+                "description": "The driver's answer in their own words.",
             },
         },
         "required": ["accepted", "verbatim_answer"],

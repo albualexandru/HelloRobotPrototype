@@ -70,6 +70,9 @@ function arrayBufferToBase64(buffer) {
 }
 
 function playChunk(base64) {
+  if (!playbackContext || finished) {
+    return;
+  }
   const pcm = new Int16Array(base64ToArrayBuffer(base64));
   if (!pcm.length) {
     return;
