@@ -1,0 +1,1 @@
+"""HelloRobotPrototype application package."""
