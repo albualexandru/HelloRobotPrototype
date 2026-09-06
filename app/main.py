@@ -30,7 +30,7 @@ logger = logging.getLogger(__name__)
 STATIC_DIR = Path(__file__).parent / "static"
 
 # Guard against oversized frames from the browser (~1s of 16 kHz PCM16 audio).
-MAX_AUDIO_CHUNK_BYTES = 64 * 1024
+MAX_AUDIO_CHUNK_BYTES = 32 * 1024
 
 app = FastAPI(title="HelloRobotPrototype")
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
@@ -203,6 +203,7 @@ async def call_websocket(websocket: WebSocket) -> None:
             )
             for task in pending:
                 task.cancel()
+            await asyncio.gather(*pending, return_exceptions=True)
             for task in done:
                 task.result()
     except WebSocketDisconnect:
