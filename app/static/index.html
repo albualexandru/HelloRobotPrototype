@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Robot Dispatch — Demo call</title>
+    <link rel="stylesheet" href="/static/style.css" />
+  </head>
+  <body>
+    <main class="card">
+      <header>
+        <p class="eyebrow">Prototype</p>
+        <h1>Robot Dispatch</h1>
+      </header>
+
+      <section id="call-panel">
+        <p id="status" class="status">Incoming demo call</p>
+        <p class="hint" id="hint">Answer the call and speak into your microphone.</p>
+        <div class="actions">
+          <button id="answer" class="btn primary">Answer demo call</button>
+          <button id="hangup" class="btn ghost" hidden>Hang up</button>
+        </div>
+      </section>
+
+      <section id="transcript-panel" hidden>
+        <h2>Transcript</h2>
+        <ul id="transcript"></ul>
+      </section>
+
+      <section id="result-panel" hidden>
+        <h2>Recorded response</h2>
+        <pre id="result"></pre>
+      </section>
+
+      <p id="error" class="error" hidden></p>
+    </main>
+
+    <script src="/static/app.js"></script>
+  </body>
+</html>
