@@ -5,7 +5,7 @@ import json
 from fastapi.testclient import TestClient
 
 from app import config
-from app.main import app, build_call_record
+from app.main import app, build_call_record, lookup_remaining_packages
 
 client = TestClient(app)
 
@@ -22,7 +22,7 @@ def test_healthz():
     assert response.json()["status"] == "ok"
 
 
-def test_live_config_declares_both_tools():
+def test_live_config_declares_expected_tools():
     live_config = config.build_live_config()
     assert live_config["response_modalities"] == ["AUDIO"]
     names = {
@@ -30,7 +30,16 @@ def test_live_config_declares_both_tools():
         for tool in live_config["tools"]
         for declaration in tool["function_declarations"]
     }
-    assert names == {"record_pickup_response", "end_call"}
+    assert names == {
+        "record_pickup_response",
+        "end_call",
+        "check_remaining_packages",
+    }
+
+
+def test_lookup_remaining_packages_defaults_to_two():
+    assert lookup_remaining_packages(config.DRIVER_ID) == 2
+    assert lookup_remaining_packages("some-other-driver") == 2
 
 
 def test_build_call_record_is_json_serialisable():

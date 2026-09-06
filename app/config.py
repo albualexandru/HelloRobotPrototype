@@ -5,6 +5,10 @@ import os
 DEFAULT_MODEL = "gemini-2.0-flash-live-001"
 DEFAULT_VOICE = "Puck"
 
+# Identifier for the demo driver, shared with the model so it can pass it to
+# tools such as `check_remaining_packages`.
+DRIVER_ID = "driver-demo-001"
+
 # Audio formats required by the Live API.
 INPUT_SAMPLE_RATE = 16000
 OUTPUT_SAMPLE_RATE = 24000
@@ -21,6 +25,9 @@ SYSTEM_INSTRUCTION = (
     "location, capacity, the package) and gather any constraints they mention. "
     "Do NOT end the call after only your greeting — always let the driver "
     "actually answer first.\n"
+    "   If you need to know how many packages the driver still has left to "
+    f"deliver today, call the tool `check_remaining_packages` with driver_id "
+    f"'{DRIVER_ID}' and use the returned count in the conversation.\n"
     "3. As soon as you have a clear decision (accepted or declined) and the "
     "driver has no further questions, you have reached the conclusion. At that "
     "point you MUST wrap up — do not keep the conversation going or ask more "
@@ -85,8 +92,36 @@ END_CALL_TOOL = {
     },
 }
 
+CHECK_REMAINING_PACKAGES_TOOL = {
+    "name": "check_remaining_packages",
+    "description": (
+        "Look up how many packages the driver still has left to deliver today. "
+        "Call this whenever you need the driver's remaining package count, for "
+        "example to help decide whether they can take one more pickup."
+    ),
+    "parameters": {
+        "type": "OBJECT",
+        "properties": {
+            "driver_id": {
+                "type": "STRING",
+                "description": (
+                    "The driver's id whose remaining packages to look up, e.g. "
+                    f"'{DRIVER_ID}'."
+                ),
+            },
+        },
+        "required": ["driver_id"],
+    },
+}
+
 TOOLS = [
-    {"function_declarations": [RECORD_PICKUP_RESPONSE_TOOL, END_CALL_TOOL]},
+    {
+        "function_declarations": [
+            RECORD_PICKUP_RESPONSE_TOOL,
+            END_CALL_TOOL,
+            CHECK_REMAINING_PACKAGES_TOOL,
+        ]
+    },
 ]
 
 

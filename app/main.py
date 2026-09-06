@@ -48,6 +48,17 @@ async def healthz() -> dict:
     return {"status": "ok", "configured": config.get_api_key() is not None}
 
 
+# Number of packages a driver has left for the day. Hardcoded for the demo;
+# a real deployment would look this up per driver from a dispatch backend.
+DEFAULT_REMAINING_PACKAGES = 2
+
+
+def lookup_remaining_packages(driver_id: str) -> int:
+    """Return how many packages the driver still has left to deliver today."""
+    # TODO: replace with a real lookup keyed by driver_id.
+    return DEFAULT_REMAINING_PACKAGES
+
+
 def build_call_record(call_id: str, started_at: str, args: dict) -> dict:
     """Shape the tool arguments into a database-ready JSON record."""
     accepted = bool(args.get("accepted"))
@@ -160,6 +171,15 @@ async def _handle_tool_call(websocket: WebSocket, session, function_calls,
             record = build_call_record(call_id, started_at, args)
             await websocket.send_json({"type": "result", "data": record})
             result = {"status": "stored", "call_id": call_id}
+        elif call.name == "check_remaining_packages":
+            driver_id = args.get("driver_id") or config.DRIVER_ID
+            remaining = lookup_remaining_packages(driver_id)
+            logger.info("check_remaining_packages(%s) -> %d for call %s",
+                        driver_id, remaining, call_id)
+            result = {
+                "driver_id": driver_id,
+                "remaining_packages": remaining,
+            }
         elif call.name == "end_call":
             end_call = True
             result = {"status": "call_ended"}
