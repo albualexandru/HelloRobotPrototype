@@ -144,6 +144,13 @@ async function startMicrophone() {
     }
   };
   source.connect(micNode);
+  // Keep the worklet in the rendering graph so its process() runs in every
+  // browser. Route it to the destination through a zero-gain node so the
+  // microphone is captured without being played back to the speakers.
+  const sink = micContext.createGain();
+  sink.gain.value = 0;
+  micNode.connect(sink);
+  sink.connect(micContext.destination);
 }
 
 function stopMicrophone() {
