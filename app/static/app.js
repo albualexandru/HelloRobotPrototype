@@ -200,6 +200,9 @@ function handleMessage(event) {
       break;
     case "interrupted":
       stopPlayback();
+      if (ended) {
+        finishCall();
+      }
       break;
     case "result":
       pendingResult = message.data;

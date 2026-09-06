@@ -84,6 +84,7 @@ async def _pump_browser_to_gemini(websocket: WebSocket, session) -> None:
             except (binascii.Error, ValueError):
                 continue
             if not chunk or len(chunk) > MAX_AUDIO_CHUNK_BYTES:
+                logger.debug("Dropped an invalid audio chunk from the browser")
                 continue
             await session.send_realtime_input(
                 audio=types.Blob(data=chunk, mime_type=config.INPUT_MIME_TYPE)
